@@ -25,30 +25,15 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Install Android cmdline-tools (pinned)
-        shell: bash
-        run: |
-          set -eux
-          SDK=/usr/local/lib/android/sdk
-          sudo mkdir -p "$SDK/cmdline-tools"
-          sudo chown -R $USER:$USER "$SDK"
-          cd /tmp
-          curl -L -o cmdline.zip https://dl.google.com/android/repository/commandlinetools-linux-12266719_latest.zip
-          unzip -q cmdline.zip
-          rm -rf "$SDK/cmdline-tools/latest"
-          mkdir -p "$SDK/cmdline-tools/latest"
-          mv cmdline-tools/* "$SDK/cmdline-tools/latest/"
-          echo "$SDK/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "ANDROID_SDK_ROOT=$SDK" >> $GITHUB_ENV
-          echo "ANDROID_HOME=$SDK" >> $GITHUB_ENV
-          echo "ANDROIDSDK=$SDK" >> $GITHUB_ENV
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Accept SDK licenses
+      - name: Accept SDK licenses (avoid broken pipe)
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
 
-      - name: Install SDK packages (pin build-tools + NDK r25b)
+      - name: Install pinned SDK/NDK packages
         shell: bash
         run: |
           sdkmanager --install \
@@ -57,13 +42,13 @@ jobs:
             "build-tools;33.0.2" \
             "ndk;25.2.9519653"
 
-      - name: Export NDK env
+      - name: Clean Buildozer cache (force new config)
         shell: bash
         run: |
-          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
-          echo "ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
+          rm -rf .buildozer
+          rm -rf ~/.buildozer
 
-      - name: System deps
+      - name: Install system deps
         shell: bash
         run: |
           sudo apt-get update
@@ -83,11 +68,11 @@ jobs:
       - name: Build APK
         shell: bash
         env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
-          ANDROIDSDK: ${{ env.ANDROIDSDK }}
-          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
-          ANDROID_NDK_ROOT: ${{ env.ANDROID_NDK_ROOT }}
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROIDSDK: /usr/local/lib/android/sdk
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/25.2.9519653
+          ANDROID_NDK_ROOT: /usr/local/lib/android/sdk/ndk/25.2.9519653
         run: |
           set -euxo pipefail
           buildozer -v android debug 2>&1 | tee buildozer_ci.log
