@@ -33,12 +33,12 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accept Android SDK licenses (no fail on broken pipe)
+      - name: Accept Android SDK licenses (avoid broken pipe failure)
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
 
-      - name: Install required SDK packages (pin build-tools)
+      - name: Install SDK packages (pin stable build-tools)
         shell: bash
         run: |
           sdkmanager --install \
@@ -46,7 +46,16 @@ jobs:
             "platforms;android-33" \
             "build-tools;33.0.2"
 
-      - name: Install system dependencies
+      - name: Link system SDK to Buildozer internal SDK path
+        shell: bash
+        run: |
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          mkdir -p /home/runner/.buildozer/android/platform
+          rm -rf /home/runner/.buildozer/android/platform/android-sdk
+          ln -s "$ANDROID_SDK_ROOT" /home/runner/.buildozer/android/platform/android-sdk
+          ls -la /home/runner/.buildozer/android/platform/android-sdk/build-tools || true
+
+      - name: System deps for buildozer
         shell: bash
         run: |
           sudo apt-get update
@@ -55,8 +64,7 @@ jobs:
             build-essential \
             python3-dev \
             libffi-dev libssl-dev \
-            zlib1g-dev \
-            openjdk-17-jdk
+            zlib1g-dev
 
       - name: Install Buildozer
         shell: bash
