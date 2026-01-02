@@ -28,7 +28,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accept SDK licenses (avoid broken pipe)
+      - name: Accept SDK licenses (non-fatal)
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
@@ -42,13 +42,23 @@ jobs:
             "build-tools;33.0.2" \
             "ndk;25.2.9519653"
 
-      - name: Clean Buildozer cache (force new config)
+      - name: Clean buildozer caches (hard reset)
         shell: bash
         run: |
           rm -rf .buildozer
-          rm -rf ~/.buildozer
+          rm -rf /home/runner/.buildozer
 
-      - name: Install system deps
+      - name: Force Buildozer to use system SDK via symlink
+        shell: bash
+        run: |
+          set -eux
+          SDK=/usr/local/lib/android/sdk
+          mkdir -p /home/runner/.buildozer/android/platform
+          ln -s "$SDK" /home/runner/.buildozer/android/platform/android-sdk
+          ls -la /home/runner/.buildozer/android/platform/android-sdk/build-tools || true
+          ls -la /home/runner/.buildozer/android/platform/android-sdk/build-tools/33.0.2 || true
+
+      - name: System deps
         shell: bash
         run: |
           sudo apt-get update
