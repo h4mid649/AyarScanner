@@ -3,11 +3,8 @@ name: Build Android APK (Python)
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
-
-concurrency:
-  group: buildozer-${{ github.ref }}
-  cancel-in-progress: true
+    branches:
+      - main
 
 jobs:
   build:
@@ -18,22 +15,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java (for Android SDK)
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: "temurin"
+          distribution: temurin
           java-version: "17"
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Accept Android SDK licenses
-        shell: bash
-        run: |
-          yes | sdkmanager --licenses
+        run: yes | sdkmanager --licenses
 
-      - name: Install required SDK packages (pin build-tools)
-        shell: bash
+      - name: Install SDK packages
         run: |
           sdkmanager --install \
             "platform-tools" \
@@ -57,12 +51,6 @@ jobs:
         with:
           work-dir: .
           buildozer-cmd: buildozer -v android debug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ayar-apk
-          path: bin/*.apk          buildozer-cmd: buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
