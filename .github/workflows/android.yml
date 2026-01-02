@@ -5,14 +5,10 @@ on:
   push:
     branches: [ "main" ]
 
-concurrency:
-  group: ayarscanner-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
       - name: Checkout
@@ -29,15 +25,30 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Install Android cmdline-tools (pinned)
+        shell: bash
+        run: |
+          set -eux
+          SDK=/usr/local/lib/android/sdk
+          sudo mkdir -p "$SDK/cmdline-tools"
+          sudo chown -R $USER:$USER "$SDK"
+          cd /tmp
+          curl -L -o cmdline.zip https://dl.google.com/android/repository/commandlinetools-linux-12266719_latest.zip
+          unzip -q cmdline.zip
+          rm -rf "$SDK/cmdline-tools/latest"
+          mkdir -p "$SDK/cmdline-tools/latest"
+          mv cmdline-tools/* "$SDK/cmdline-tools/latest/"
+          echo "$SDK/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "ANDROID_SDK_ROOT=$SDK" >> $GITHUB_ENV
+          echo "ANDROID_HOME=$SDK" >> $GITHUB_ENV
+          echo "ANDROIDSDK=$SDK" >> $GITHUB_ENV
 
-      - name: Accept SDK licenses (no fail on broken pipe)
+      - name: Accept SDK licenses
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
 
-      - name: Install pinned SDK/NDK packages
+      - name: Install SDK packages (pin build-tools + NDK r25b)
         shell: bash
         run: |
           sdkmanager --install \
@@ -46,29 +57,13 @@ jobs:
             "build-tools;33.0.2" \
             "ndk;25.2.9519653"
 
-      - name: Export NDK env (force r25b)
+      - name: Export NDK env
         shell: bash
         run: |
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-          echo "ANDROIDSDK=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
           echo "ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
 
-      - name: Show toolchain versions (diagnostic)
-        shell: bash
-        run: |
-          set -e
-          python -V
-          java -version
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653"
-          ls -la "$ANDROID_SDK_ROOT/build-tools" || true
-          ls -la "$ANDROID_SDK_ROOT/ndk" || true
-          ls -la "$ANDROID_SDK_ROOT/build-tools/33.0.2" || true
-          ls -la "$ANDROID_SDK_ROOT/build-tools/33.0.2/aidl" || true
-
-      - name: Install system dependencies
+      - name: System deps
         shell: bash
         run: |
           sudo apt-get update
@@ -79,13 +74,13 @@ jobs:
             libffi-dev libssl-dev \
             zlib1g-dev
 
-      - name: Install Buildozer + tooling
+      - name: Install Buildozer
         shell: bash
         run: |
           python -m pip install --upgrade pip
           pip install --upgrade buildozer cython
 
-      - name: Build APK (keep full logs)
+      - name: Build APK
         shell: bash
         env:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
