@@ -21,5 +21,5 @@ android.minapi = 21
 android.archs = arm64-v8a,armeabi-v7a
 android.permissions = INTERNET
 
-# پین کردن build-tools تا دنبال 36.x نرود
+# پین build-tools تا دنبال 36.x نرود
 android.sdk_build_tools = 33.0.2
